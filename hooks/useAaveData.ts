@@ -12,6 +12,7 @@ import {
   resolveEffectiveRiskParams,
 } from "../utils/liquidEMode";
 import type { ReplayResult, SimOp } from "../utils/shareCard";
+import { calcSwapQuote } from "../utils/swapQuote";
 
 /** Max time a single market fetch (or ENS resolution) may take before it is
  * treated as failed. Keeps one hung RPC from blocking the UI forever. */
@@ -742,6 +743,142 @@ export function useAaveData(address: string, preventFetch: boolean = false) {
     workingData.userReservesData.merge([reserve]);
   };
 
+  const swapReserveAsset = (
+    srcSymbol: string,
+    dstSymbol: string,
+    amountSrc: number,
+  ): void => {
+    if (
+      !Number.isFinite(amountSrc) ||
+      amountSrc <= 0 ||
+      !srcSymbol ||
+      !dstSymbol ||
+      srcSymbol === dstSymbol
+    )
+      return;
+    const marketData = data?.[currentMarket];
+    if (!marketData) return;
+    const reserves = marketData.workingData?.userReservesData ?? [];
+    const srcRow = reserves.find((item) => item.asset.symbol === srcSymbol);
+    const dstDetails = marketData.availableAssets?.find(
+      (a) => a.symbol === dstSymbol,
+    );
+    if (!srcRow || !dstDetails) return;
+    const balanceSrc = srcRow.underlyingBalance;
+    if (!Number.isFinite(balanceSrc) || amountSrc > balanceSrc) return;
+    const priceSrc = srcRow.asset.priceInUSD;
+    const priceDst = dstDetails.priceInUSD;
+    if (
+      !Number.isFinite(priceSrc) ||
+      !Number.isFinite(priceDst) ||
+      priceDst <= 0
+    )
+      return;
+    const result = calcSwapQuote(amountSrc, priceSrc, priceDst);
+    if (!("quote" in result)) return;
+
+    const workingData = store.addressData.nested(address)[currentMarket]
+      .workingData as State<AaveHealthFactorData>;
+    let dstItem = workingData.userReservesData.find(
+      (reserveItem) => reserveItem.asset.symbol.get() === dstSymbol,
+    );
+    if (!dstItem) {
+      const asset: AssetDetails = {
+        ...(dstDetails as AssetDetails),
+        isNewlyAddedBySimUser: true,
+      };
+      workingData.userReservesData.merge([
+        {
+          asset,
+          underlyingBalance: 0,
+          underlyingBalanceUSD: 0,
+          underlyingBalanceMarketReferenceCurrency: 0,
+          usageAsCollateralEnabledOnUser: asset.usageAsCollateralEnabled,
+        },
+      ]);
+      dstItem = workingData.userReservesData.find(
+        (reserveItem) => reserveItem.asset.symbol.get() === dstSymbol,
+      );
+      if (!dstItem) return;
+    }
+    const srcItem = workingData.userReservesData.find(
+      (reserveItem) => reserveItem.asset.symbol.get() === srcSymbol,
+    );
+    if (!srcItem) return;
+    srcItem.underlyingBalance.set(balanceSrc - amountSrc);
+    dstItem.underlyingBalance.set(
+      dstItem.underlyingBalance.get() + result.quote.qtyDest,
+    );
+    updateAllDerivedHealthFactorData();
+  };
+
+  const swapBorrowedAsset = (
+    srcSymbol: string,
+    dstSymbol: string,
+    amountSrc: number,
+  ): void => {
+    if (
+      !Number.isFinite(amountSrc) ||
+      amountSrc <= 0 ||
+      !srcSymbol ||
+      !dstSymbol ||
+      srcSymbol === dstSymbol
+    )
+      return;
+    const marketData = data?.[currentMarket];
+    if (!marketData) return;
+    const borrows = marketData.workingData?.userBorrowsData ?? [];
+    const srcRow = borrows.find((item) => item.asset.symbol === srcSymbol);
+    const dstDetails = marketData.availableAssets?.find(
+      (a) => a.symbol === dstSymbol,
+    );
+    if (!srcRow || !dstDetails) return;
+    const balanceSrc = srcRow.totalBorrows;
+    if (!Number.isFinite(balanceSrc) || amountSrc > balanceSrc) return;
+    const priceSrc = srcRow.asset.priceInUSD;
+    const priceDst = dstDetails.priceInUSD;
+    if (
+      !Number.isFinite(priceSrc) ||
+      !Number.isFinite(priceDst) ||
+      priceDst <= 0
+    )
+      return;
+    const result = calcSwapQuote(amountSrc, priceSrc, priceDst);
+    if (!("quote" in result)) return;
+
+    const workingData = store.addressData.nested(address)[currentMarket]
+      .workingData as State<AaveHealthFactorData>;
+    let dstItem = workingData.userBorrowsData.find(
+      (borrowItem) => borrowItem.asset.symbol.get() === dstSymbol,
+    );
+    if (!dstItem) {
+      const asset: AssetDetails = {
+        ...(dstDetails as AssetDetails),
+        isNewlyAddedBySimUser: true,
+      };
+      workingData.userBorrowsData.merge([
+        {
+          asset,
+          totalBorrows: 0,
+          totalBorrowsUSD: 0,
+          totalBorrowsMarketReferenceCurrency: 0,
+          stableBorrowAPY: 0,
+        },
+      ]);
+      dstItem = workingData.userBorrowsData.find(
+        (borrowItem) => borrowItem.asset.symbol.get() === dstSymbol,
+      );
+      if (!dstItem) return;
+    }
+    const srcItem = workingData.userBorrowsData.find(
+      (borrowItem) => borrowItem.asset.symbol.get() === srcSymbol,
+    );
+    if (!srcItem) return;
+    srcItem.totalBorrows.set(balanceSrc - amountSrc);
+    dstItem.totalBorrows.set(dstItem.totalBorrows.get() + result.quote.qtyDest);
+    updateAllDerivedHealthFactorData();
+  };
+
   const removeAsset = (symbol: string, assetType: string) => {
     const items =
       assetType === "RESERVE"
@@ -1026,6 +1163,8 @@ export function useAaveData(address: string, preventFetch: boolean = false) {
     resetCurrentMarketChanges,
     addBorrowAsset,
     addReserveAsset,
+    swapReserveAsset,
+    swapBorrowedAsset,
     setCurrentMarket,
     setCurrentAddress,
     setBorrowedAssetQuantity,

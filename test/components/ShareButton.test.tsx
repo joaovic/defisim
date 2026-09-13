@@ -29,7 +29,7 @@ jest.mock("@lingui/core/macro", () => ({
         "",
       );
     if (Array.isArray(first))
-      return interpolate(first as TemplateStringsArray, ...rest);
+      return interpolate(first as unknown as TemplateStringsArray, ...rest);
     return interpolate; // bound form: t(i18n)`...`
   },
 }));
@@ -115,8 +115,8 @@ const renderShareButton = (buildPayload: () => SharePayload | null) => {
 describe("ShareButton", () => {
   beforeEach(() => {
     fetchMock.resetMocks();
-    fetchMock.mockResponse(async (_url, init) => {
-      const body = JSON.parse(String(init?.body ?? "{}"));
+    fetchMock.mockResponse(async (req) => {
+      const body = JSON.parse(String((req as any)?.body ?? "{}")); // eslint-disable-line @typescript-eslint/no-explicit-any
       const id = body.card?.m === "ARBITRUM_V3" ? "arbShare" : "ethShare";
       return JSON.stringify({ id });
     });

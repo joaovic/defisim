@@ -1,0 +1,48 @@
+/* Destination row states for the swap dialog.
+   Mirrors the MarketPicker selected-row language: brand-tinted
+   background plus an inset accent bar, so the chosen asset
+   stays visible in both dark and light themes. */
+
+.row {
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background-color: var(--mantine-color-dark-5);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--mantine-color-brand-5);
+  outline-offset: -2px;
+}
+
+.rowSelected {
+  background-color: color-mix(
+    in srgb,
+    var(--mantine-color-brand-5) 14%,
+    var(--mantine-color-dark-6)
+  );
+  box-shadow: inset 2px 0 0 var(--mantine-color-brand-5);
+}
+
+.rowSelected:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--mantine-color-brand-5) 20%,
+    var(--mantine-color-dark-6)
+  );
+}
+
+.rowCheck {
+  margin-left: auto;
+  color: var(--mantine-color-brand-4);
+  flex-shrink: 0;
+}
