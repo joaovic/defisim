@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { t } from "@lingui/core/macro";
 import {
   ActionIcon,
+  Button,
   Center,
   Container,
   Divider,
@@ -21,6 +22,7 @@ import TokenIcon from "../TokenIcon";
 import { AssetAPY } from "../AssetAPY";
 import ReserveAssetDetailsDialog from "../ReserveAssetDetailsDialog";
 import BorrowedAssetDetailsDialog from "../BorrowedAssetDetailsDialog";
+import SwapAssetDialog from "./SwapAssetDialog";
 import { UserAssetQuantityInput } from "./UserAssetQuantityInput";
 import { UserAssetPriceInput } from "./UserAssetPriceInput";
 import { UserAssetItemQuantityPriceSummary } from "./UserAssetItemQuantityPriceSummary";
@@ -90,109 +92,130 @@ export const UserAssetItem = memo(
     assetDetails,
     isStableBorrow = false,
     stableBorrowAPY = 0,
-  }: UserAssetItemProps) => (
-    <Paper mt="xl" mb="xl" withBorder p="xs" bg="var(--mantine-color-dark-6)">
-      <Flex justify="space-between">
-        <Group mb="sm">
-          <TokenIcon symbol={assetSymbol} size="24px" alt={`${assetSymbol}`} />
-          <Text fz="md" fw={700} span>
-            {assetSymbol}
-          </Text>
-          <Divider orientation="vertical" variant="dotted" />
-          <Text fz="xs" span>
-            <AssetAPY
-              assetType={assetType}
-              assetDetails={assetDetails}
-              isStableBorrow={isStableBorrow}
-              stableBorrowAPY={stableBorrowAPY}
+  }: UserAssetItemProps) => {
+    const [swapOpened, setSwapOpened] = useState(false);
+    return (
+      <Paper mt="xl" mb="xl" withBorder p="xs" bg="var(--mantine-color-dark-6)">
+        <Flex justify="space-between">
+          <Group mb="sm">
+            <TokenIcon
+              symbol={assetSymbol}
+              size="24px"
+              alt={`${assetSymbol}`}
             />
-          </Text>
-          <Divider orientation="vertical" variant="dotted" />
+            <Text fz="md" fw={700} span>
+              {assetSymbol}
+            </Text>
+            <Divider orientation="vertical" variant="dotted" />
+            <Text fz="xs" span>
+              <AssetAPY
+                assetType={assetType}
+                assetDetails={assetDetails}
+                isStableBorrow={isStableBorrow}
+                stableBorrowAPY={stableBorrowAPY}
+              />
+            </Text>
+            <Divider orientation="vertical" variant="dotted" />
 
-          {assetType === "RESERVE" ? (
-            <ReserveAssetDetailsDialog assetDetails={assetDetails} />
-          ) : (
-            <BorrowedAssetDetailsDialog
-              assetDetails={assetDetails}
-              isStableBorrow={isStableBorrow}
-              stableBorrowAPY={stableBorrowAPY}
-            />
-          )}
-        </Group>
+            {assetType === "RESERVE" ? (
+              <ReserveAssetDetailsDialog assetDetails={assetDetails} />
+            ) : (
+              <BorrowedAssetDetailsDialog
+                assetDetails={assetDetails}
+                isStableBorrow={isStableBorrow}
+                stableBorrowAPY={stableBorrowAPY}
+              />
+            )}
+          </Group>
 
-        <Tooltip label={t`Remove ${assetSymbol}`} position="left" withArrow>
-          <ActionIcon
-            aria-label={t`Remove ${assetSymbol}`}
-            onClick={() => onRemoveAsset(assetSymbol, assetType)}
-          >
-            <CgRemoveR size={16} />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
-
-      <Grid columns={17}>
-        <Grid.Col span={{ base: 17, sm: 8 }}>
-          <UserAssetQuantityInput
-            assetSymbol={assetSymbol}
-            workingQuantity={workingQuantity}
-            originalQuantity={originalQuantity}
-            isNewlyAddedBySimUser={isNewlyAddedBySimUser}
-            setAssetQuantity={setAssetQuantity}
-          />
-        </Grid.Col>
-        <Grid.Col span={1} visibleFrom="sm">
-          <Center style={{ height: "100%" }}>
-            <FaAsterisk />
-          </Center>
-        </Grid.Col>
-        <Grid.Col span={{ base: 17, sm: 8 }}>
-          <UserAssetPriceInput
-            assetSymbol={assetSymbol}
-            workingPrice={workingPrice}
-            originalPrice={originalPrice}
-            setAssetPriceInUSD={setAssetPriceInUSD}
-          />
-        </Grid.Col>
-      </Grid>
-      <Container
-        mt="xs"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          paddingTop: "16px",
-          padding: "0px",
-        }}
-      >
-        <UserAssetItemQuantityPriceSummary
-          workingQuantity={workingQuantity}
-          workingPrice={workingPrice}
-          originalQuantity={originalQuantity}
-          originalPrice={originalPrice}
+          <Group gap="xs" align="center">
+            <Button
+              variant="outline"
+              size="xs"
+              aria-label={t`Swap ${assetSymbol}`}
+              onClick={() => setSwapOpened(true)}
+            >{t`Swap`}</Button>
+            <Tooltip label={t`Remove ${assetSymbol}`} position="left" withArrow>
+              <ActionIcon
+                aria-label={t`Remove ${assetSymbol}`}
+                onClick={() => onRemoveAsset(assetSymbol, assetType)}
+              >
+                <CgRemoveR size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Flex>
+        <SwapAssetDialog
+          opened={swapOpened}
+          onClose={() => setSwapOpened(false)}
+          srcSymbol={assetSymbol}
+          assetType={assetType}
         />
-      </Container>
-      <Container
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "0px",
-          paddingTop: "6px",
-        }}
-      >
-        {assetType === "RESERVE" ? (
-          <UserAssetUseAsCollateralToggle
-            assetSymbol={assetSymbol}
-            usageAsCollateralEnabledOnUser={usageAsCollateralEnabledOnUser}
-            setUseReserveAssetAsCollateral={setUseReserveAssetAsCollateral}
-            disableSetUseReserveAssetAsCollateral={
-              disableSetUseReserveAssetAsCollateral
-            }
+
+        <Grid columns={17}>
+          <Grid.Col span={{ base: 17, sm: 8 }}>
+            <UserAssetQuantityInput
+              assetSymbol={assetSymbol}
+              workingQuantity={workingQuantity}
+              originalQuantity={originalQuantity}
+              isNewlyAddedBySimUser={isNewlyAddedBySimUser}
+              setAssetQuantity={setAssetQuantity}
+            />
+          </Grid.Col>
+          <Grid.Col span={1} visibleFrom="sm">
+            <Center style={{ height: "100%" }}>
+              <FaAsterisk />
+            </Center>
+          </Grid.Col>
+          <Grid.Col span={{ base: 17, sm: 8 }}>
+            <UserAssetPriceInput
+              assetSymbol={assetSymbol}
+              workingPrice={workingPrice}
+              originalPrice={originalPrice}
+              setAssetPriceInUSD={setAssetPriceInUSD}
+            />
+          </Grid.Col>
+        </Grid>
+        <Container
+          mt="xs"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            paddingTop: "16px",
+            padding: "0px",
+          }}
+        >
+          <UserAssetItemQuantityPriceSummary
+            workingQuantity={workingQuantity}
+            workingPrice={workingPrice}
+            originalQuantity={originalQuantity}
+            originalPrice={originalPrice}
           />
-        ) : (
-          <Space m="lg" />
-        )}
-      </Container>
-    </Paper>
-  ),
+        </Container>
+        <Container
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "0px",
+            paddingTop: "6px",
+          }}
+        >
+          {assetType === "RESERVE" ? (
+            <UserAssetUseAsCollateralToggle
+              assetSymbol={assetSymbol}
+              usageAsCollateralEnabledOnUser={usageAsCollateralEnabledOnUser}
+              setUseReserveAssetAsCollateral={setUseReserveAssetAsCollateral}
+              disableSetUseReserveAssetAsCollateral={
+                disableSetUseReserveAssetAsCollateral
+              }
+            />
+          ) : (
+            <Space m="lg" />
+          )}
+        </Container>
+      </Paper>
+    );
+  },
   UserAssetItemPropsChecker,
 );
 
